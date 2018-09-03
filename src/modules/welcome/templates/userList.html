@@ -42,8 +42,9 @@
                      class="big no-icon"
                      placeholder="userList.placeholders.password"
                      required></w-input>
-
-            <div ng-class="{active: $ctrl.showPasswordError}" class="error" w-i18n="password.error"></div>
+            <div class="like-input-error" ng-if="$ctrl.showPasswordError">
+                <span class="error active" w-i18n="password.error"></span>
+            </div>
         </w-input-container>
 
         <w-button disabled="$ctrl.loginForm.$invalid" type="submit" class="submit big long">

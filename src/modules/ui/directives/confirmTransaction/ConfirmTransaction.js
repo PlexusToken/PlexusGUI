@@ -21,54 +21,68 @@
 
         class ConfirmTransaction extends Base {
 
+            /**
+             * @type {function}
+             */
+            onTxSent = null;
+            /**
+             * @type {*|string}
+             */
+            locale = $attrs.locale || 'app.ui';
+            /**
+             * @type {number}
+             */
+            step = 0;
+            /**
+             * @type {boolean}
+             */
+            showValidationErrors = false;
+            /**
+             * @type {Array}
+             */
+            errors = [];
+            /**
+             * @type {object}
+             */
+            preparedTx = null;
+            /**
+             * @type {string}
+             */
+            txId = '';
+            /**
+             * @type {string}
+             */
+            type = user.userType;
+            /**
+             * @type {boolean}
+             */
+            loadingSignFromDevice = false;
+            /**
+             * @type {boolean}
+             */
+            deviceSignFail = false;
+            /**
+             * @type {boolean}
+             */
+            showAuthCode = false;
+            /**
+             * @type {Signable}
+             * @private
+             */
+            _signable = null;
+            /**
+             * @type {boolean}
+             * @private
+             */
+            _has2fa = true; // TODO!
+            /**
+             * @type {Deferred}
+             * @private
+             */
+            _getCodeDefer = null;
+
             constructor() {
                 super();
-                /**
-                 * @type {function}
-                 */
-                this.onTxSent = null;
-                /**
-                 * @type {*|string}
-                 */
-                this.locale = $attrs.locale || 'app.ui';
-                /**
-                 * @type {number}
-                 */
-                this.step = 0;
-                /**
-                 * @type {boolean}
-                 */
-                this.showValidationErrors = false;
-                /**
-                 * @type {Array}
-                 */
-                this.errors = [];
-
-                /**
-                 * @type {object}
-                 */
-                this.preparedTx = null;
-                /**
-                 * @type {string}
-                 */
-                this.txId = '';
-                /**
-                 * @type {string}
-                 */
-                this.type = user.userType;
-                /**
-                 * @type {boolean}
-                 */
-                this.loadingSignFromDevice = false;
-                /**
-                 * @type {boolean}
-                 */
-                this.deviceSignFail = false;
-                /**
-                 * @type {Signable}
-                 * @private
-                 */
-                this._signable = null;
 
                 this.observe('tx', this._onChangeTx);
                 this.observe('showValidationErrors', this._showErrors);
@@ -123,8 +137,13 @@
                 this.trySign();
             }
 
+            onFillCode(code) { // TODO!
+                this._broadcast().then(this._getCodeDefer.resolve, this._getCodeDefer.reject);
+            }
+
             confirm() {
                 return this.sendTransaction().then(({ id }) => {
+                    this.showAuthCode = false;
                     this.tx.id = id;
                     this.step++;
                     this.onTxSent({ id });
@@ -145,6 +164,21 @@
             }
 
             sendTransaction() {
+                if (this._has2fa) {
+                    this.showAuthCode = true;
+                    this._getCodeDefer = $.Deferred();
+
+                    this._getCodeDefer.promise().always(() => {
+                        this._getCodeDefer = null;
+                    });
+
+                    return this._getCodeDefer.promise();
+                } else {
+                    return this._broadcast();
+                }
+            }
+
+            _broadcast() {
                 const txType = ConfirmTransaction.upFirstChar(this.tx.transactionType);
                 const amount = ConfirmTransaction.toBigNumber(this.tx.amount);
 

@@ -1,0 +1,40 @@
+@import (reference) 'config';
+
+w-google-auth-code {
+  display: block;
+  width: 100%;
+}
+
+.google-auth-code {
+  display: flex;
+  width: 100%;
+  background-color: @color-basic-200;
+
+  &__icon {
+    display: flex;
+  }
+
+  &__inputs-wrapper {
+    width: 212px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  &__input {
+    display: flex;
+    width: 32px;
+  }
+
+  /* Hide HTML5 Up and Down arrows. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  w-input .w-input-wrap input[type="number"].small {
+    padding: 9px 12px;
+    -moz-appearance: textfield;
+  }
+}
