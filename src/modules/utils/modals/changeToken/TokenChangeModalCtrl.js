@@ -104,7 +104,7 @@
                 createPoll(this, this._getWavesBalance, '_waves', 1000);
 
                 this.observe(['input', 'issue'], this._createTx);
-                this.observe('_waves', this._changeHasFee);
+                this.observe(['_waves', 'fee'], this._changeHasFee);
             }
 
             _getWavesBalance() {
@@ -112,6 +112,9 @@
             }
 
             _changeHasFee() {
+                if (!this._fee) {
+                    return null;
+                }
                 this.noFee = this._waves.lt(this.fee);
             }
 

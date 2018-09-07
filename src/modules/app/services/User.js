@@ -8,7 +8,8 @@
 
     const NOT_SYNC_FIELDS = [
         'changeSetting',
-        'has2fa'
+        'has2fa',
+        'extraFee'
     ];
 
     /**
@@ -140,30 +141,6 @@
                 this._settings.change.on(() => this._onChangeSettings());
 
                 Mousetrap.bind(['ctrl+shift+k'], () => this.switchNextTheme());
-
-                const hasIn2faService = key => ds.fetch(`https://127.0.0.1/google-auth/${key}`)
-                    .then(() => true)
-                    .catch(() => false);
-
-                this.onLogin()
-                    .then(() => {
-                        Promise.all([
-                            ds.fetch(`${ds.config.get('node')}/addresses/scriptInfo/${this.address}`),
-                            ds.signature.getSignatureApi().getPublicKey(),
-                            ds.api.assets.get(WavesApp.defaultAssets.WAVES)
-                        ])
-
-                            .then(([response, myPublicKey, waves]) => {
-                                this.extraFee = Money.fromCoins(response.extraFee, waves);
-                                return utils.getPublicKeysFromScript(response.scriptText || '')
-                                    .filter(key => key !== myPublicKey);
-                            })
-                            .then(keys => Promise.all(keys.map(hasIn2faService)))
-                            .then(hasList => hasList && hasList.some(Boolean))
-                            .then(has2fa => {
-                                this.has2fa = has2fa;
-                            });
-                    });
             }
 
             /**
@@ -476,8 +453,32 @@
                             })
                             .then(() => {
                                 this._logoutTimer();
-                                this._dfr.resolve();
-                            });
+                                return this._get2faData();
+                            })
+                            .then(this._dfr.resolve);
+                    });
+            }
+
+            _get2faData() {
+                const hasIn2faService = key => ds.fetch(`https://127.0.0.1/google-auth/${key}`)
+                    .then(() => true)
+                    .catch(() => false);
+
+                return Promise.all([
+                    ds.fetch(`${ds.config.get('node')}/addresses/scriptInfo/${this.address}`),
+                    ds.signature.getSignatureApi().getPublicKey(),
+                    ds.api.assets.get(WavesApp.defaultAssets.WAVES)
+                ])
+
+                    .then(([response, myPublicKey, waves]) => {
+                        this.extraFee = Money.fromCoins(response.extraFee, waves);
+                        return utils.getPublicKeysFromScript(response.scriptText || '')
+                            .filter(key => key !== myPublicKey);
+                    })
+                    .then(keys => Promise.all(keys.map(hasIn2faService)))
+                    .then(hasList => hasList && hasList.some(Boolean))
+                    .then(has2fa => {
+                        this.has2fa = has2fa;
                     });
             }
 
