@@ -18,6 +18,7 @@
 
         const ds = require('data-service');
         const { TRANSACTION_TYPE_NUMBER } = require('@waves/signature-adapter');
+        // const { libs } = require('@waves/signature-generator');
 
         class ConfirmTransaction extends Base {
 
@@ -74,7 +75,7 @@
              * @type {boolean}
              * @private
              */
-            _has2fa = true; // TODO!
+            _has2fa = user.has2fa;
             /**
              * @type {Deferred}
              * @private
@@ -137,7 +138,11 @@
                 this.trySign();
             }
 
-            onFillCode(code) { // TODO!
+            onFillCode(/* code */) {
+                // TODO get signature from Dimas's serevice
+                // TODO get base64 from bytes
+                // libs.base64.fromByteArray();
+                // ds.fetch('https://localhost')
                 this._broadcast().then(this._getCodeDefer.resolve, this._getCodeDefer.reject);
             }
 

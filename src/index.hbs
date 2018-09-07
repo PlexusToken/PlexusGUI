@@ -313,7 +313,7 @@
         var WavesApp = {
             name: 'Waves Client',
             version: '{{pack.version}}',
-            type: (window.isDesktop || !window.buildIsWeb)? 'desktop' : 'web',
+            type: (window.isDesktop || !window.buildIsWeb) ? 'desktop' : 'web',
             matcherPriorityList: {{{matcherPriorityList}}},
             themesConf: {{{themesConf}}},
             progress: 0,
@@ -440,7 +440,9 @@
 
     <!-- CSS -->
 
-    {{#if isWeb}}<base href="/">{{/if}}
+    {{#if isWeb}}
+        <base href="/">
+    {{/if}}
 
     <script>
 

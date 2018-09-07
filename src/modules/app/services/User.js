@@ -7,10 +7,12 @@
      */
 
     const NOT_SYNC_FIELDS = [
-        'changeSetting'
+        'changeSetting',
+        'has2fa'
     ];
 
     /**
+     * @param {app.utils} utils
      * @param {Storage} storage
      * @param {*} $state
      * @param {app.defaultSettings} defaultSettings
@@ -20,12 +22,21 @@
      * @param {TimeLine} timeLine
      * @return {User}
      */
-    const factory = function (storage, $state, defaultSettings, state, UserRouteState, modalManager, timeLine, themes) {
+    const factory = function (utils,
+                              storage,
+                              $state,
+                              defaultSettings,
+                              state,
+                              UserRouteState,
+                              modalManager,
+                              timeLine,
+                              themes) {
 
         const tsUtils = require('ts-utils');
+        const ds = require('data-service');
+        const { Money } = require('@waves/data-entities');
 
         class User {
-
 
             /**
              * @type {Signal<string>} setting path
@@ -34,91 +45,125 @@
                 return this._settings.change;
             }
 
+            /**
+             * @type {string}
+             */
+            address = null;
+            /**
+             * @type {string}
+             */
+            id = null;
+            /**
+             * @type {string}
+             */
+            name = null;
+            /**
+             * @type {string}
+             */
+            publicKey = null;
+            /**
+             * @type {string}
+             */
+            encryptedSeed = null;
+            /**
+             * @type {string}
+             */
+            userType = null;
+            /**
+             * @type {object}
+             */
+            settings = Object.create(null);
+            /**
+             * @type {boolean}
+             */
+            noSaveToStorage = false;
+            /**
+             * @type {boolean}
+             */
+            has2fa = false;
+            /**
+             * @type {number}
+             */
+            lastLogin = Date.now();
+            /**
+             * @type {{signature: string, timestamp: number}}
+             */
+            matcherSign = null;
+            /**
+             * @type {Money}
+             */
+            extraFee = null;
+            /**
+             * @type {DefaultSettings}
+             * @private
+             */
+            _settings = defaultSettings.create(Object.create(null));
+            /**
+             * @type {Deferred}
+             * @private
+             */
+            _dfr = $.Deferred();
+            /**
+             * @type {object}
+             * @private
+             */
+            __props = Object.create(null);
+            /**
+             * @type {string}
+             * @private
+             */
+            _password = null;
+            /**
+             * @type {number}
+             * @private
+             */
+            _changeTimer = null;
+            /**
+             * @type {Array}
+             * @private
+             */
+            _stateList = null;
+            /**
+             * @type {Array}
+             * @private
+             */
+            _fieldsForSave = [];
+            /**
+             * @type {Array}
+             * @private
+             */
+            _history = [];
+
             constructor() {
-                /**
-                 * @type {string}
-                 */
-                this.address = null;
-                /**
-                 * @type {string}
-                 */
-                this.id = null;
-                /**
-                 * @type {string}
-                 */
-                this.name = null;
-                /**
-                 * @type {string}
-                 */
-                this.publicKey = null;
-                /**
-                 * @type {string}
-                 */
-                this.encryptedSeed = null;
-                /**
-                 * @type {string}
-                 */
-                this.userType = null;
-                /**
-                 * @type {string}
-                 */
-                this.userType = null;
-                /**
-                 * @type {object}
-                 */
-                this.settings = Object.create(null);
-                /**
-                 * @type {boolean}
-                 */
-                this.noSaveToStorage = false;
-                /**
-                 * @type {DefaultSettings}
-                 * @private
-                 */
-                this._settings = defaultSettings.create(Object.create(null));
-                /**
-                 * @type {number}
-                 */
-                this.lastLogin = Date.now();
-
-                this.matcherSign = null;
-
-                /**
-                 * @type {Deferred}
-                 * @private
-                 */
-                this._dfr = $.Deferred();
-                /**
-                 * @type {object}
-                 * @private
-                 */
-                this.__props = Object.create(null);
-                /**
-                 * @type {string}
-                 * @private
-                 */
-                this._password = null;
-                /**
-                 * @type {number}
-                 * @private
-                 */
-                this._changeTimer = null;
-                /**
-                 * @type {Array}
-                 * @private
-                 */
-                this._stateList = null;
-                /**
-                 * @type {Array}
-                 * @private
-                 */
-                this._fieldsForSave = [];
-                this._history = [];
 
                 this._setObserve();
                 this._settings.change.on(() => this._onChangeSettings());
 
                 Mousetrap.bind(['ctrl+shift+k'], () => this.switchNextTheme());
+
+                const hasIn2faService = key => ds.fetch(`https://127.0.0.1/google-auth/${key}`)
+                    .then(() => true)
+                    .catch(() => false);
+
+                this.onLogin()
+                    .then(() => {
+                        Promise.all([
+                            ds.fetch(`${ds.config.get('node')}/addresses/scriptInfo/${this.address}`),
+                            ds.signature.getSignatureApi().getPublicKey(),
+                            ds.api.assets.get(WavesApp.defaultAssets.WAVES)
+                        ])
+
+                            .then(([response, myPublicKey, waves]) => {
+                                this.extraFee = Money.fromCoins(response.extraFee, waves);
+                                return utils.getPublicKeysFromScript(response.scriptText || '')
+                                    .filter(key => key !== myPublicKey);
+                            })
+                            .then(keys => Promise.all(keys.map(hasIn2faService)))
+                            .then(hasList => hasList && hasList.some(Boolean))
+                            .then(has2fa => {
+                                this.has2fa = has2fa;
+                            });
+                    });
             }
 
             /**
@@ -595,6 +640,7 @@
     };
 
     factory.$inject = [
+        'utils',
         'storage',
         '$state',
         'defaultSettings',

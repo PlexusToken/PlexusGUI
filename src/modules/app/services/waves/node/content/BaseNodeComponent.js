@@ -37,7 +37,7 @@
                     case TYPES.LEASE:
                     case TYPES.CANCEL_LEASING:
                         return Promise.all([
-                            ds.moneyFromTokens('0.001', WavesApp.defaultAssets.WAVES)
+                            ds.moneyFromTokens(user.extraFee.getTokens().plus('0.001'), WavesApp.defaultAssets.WAVES)
                         ]);
                     case TYPES.MASS_TRANSFER:
                         return Promise.all([
@@ -46,13 +46,14 @@
                                 const factor = !(len % 2) ? len : len + 1;
                                 const transfer = new BigNumber('0.001');
                                 const massTransfer = new BigNumber('0.001').div(2);
-                                return money.cloneWithTokens(transfer.plus(massTransfer.times(factor)));
+                                const fee = user.extraFee.getTokens().plus(transfer.plus(massTransfer.times(factor)));
+                                return money.cloneWithTokens(fee);
                             })
                         ]);
                     case TYPES.ISSUE:
                     case TYPES.REISSUE:
                         return utils.whenAll([
-                            ds.moneyFromTokens('1', WavesApp.defaultAssets.WAVES)
+                            ds.moneyFromTokens(user.extraFee.getTokens().plus('1'), WavesApp.defaultAssets.WAVES)
                         ]);
                     default:
                         throw new Error(`Wrong transaction type! ${type}`);
