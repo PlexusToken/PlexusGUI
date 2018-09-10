@@ -8,15 +8,25 @@ import { parse } from 'url';
 import { TBuild, TConnection, TPlatform } from './ts-scripts/interface';
 import { readFile } from 'fs-extra';
 import { join } from 'path';
+import * as httpProxy from 'http-proxy';
+import * as HttpProxyRules from 'http-proxy-rules';
 
 const ip = require('my-local-ip')();
-
 
 const connectionTypes: Array<TConnection> = ['mainnet', 'testnet'];
 const buildTypes: Array<TBuild> = ['dev', 'normal', 'min'];
 const privateKey = readFileSync('localhost.key').toString();
 const certificate = readFileSync('localhost.crt').toString();
+const proxyRules = new HttpProxyRules({
+    rules: {
+        '.*/google-auth': 'http://localhost/google-auth',
+        '.*/google-auth/(.+)': 'http://localhost/google-auth/$1',
+    }
+});
 
+const proxy = httpProxy.createProxy({
+    ssl: { key: privateKey, cert: certificate }
+});
 
 const handler = function (req, res) {
     const url = parse(req.url);
@@ -42,10 +52,14 @@ const handler = function (req, res) {
     }
 
     const parsed = parseCookie(req.headers.cookie);
+    const target = proxyRules.match(req);
+
     if (!parsed) {
         readFile(join(__dirname, 'chooseBuild.hbs'), 'utf8').then((file) => {
             res.end(compile(file)({ links: getBuildsLinks(req.headers['user-agent']) }));
         });
+    } else if (target) {
+        return proxy.web(req, res, { target:'http://localhost:3000' });
     } else {
         route(parsed.connection, parsed.build, parsed.platform)(req, res);
     }
