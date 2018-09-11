@@ -120,6 +120,9 @@
                     this._balance.available.getTokens().lt(this._fee.getTokens());
             }
 
+            /**
+             * @private
+             */
             _reset() {
 
                 this.name = '';

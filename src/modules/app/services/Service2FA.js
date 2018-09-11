@@ -8,9 +8,6 @@
 
         const ds = require('data-service');
 
-        /**
-         * @returns {S2FAService}
-         */
         class Service2FA {
 
             url = '/google-auth';

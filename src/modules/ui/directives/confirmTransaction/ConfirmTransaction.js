@@ -12,7 +12,7 @@
      * @param {$rootScope.Scope} $scope
      * @param {app.utils} utils
      * @param {ValidateService} validateService
-     * @param {s2FAService} S2FAService
+     * @param {Service2FA} s2FAService
      * @returns {ConfirmTransaction}
      */
     const controller = function (

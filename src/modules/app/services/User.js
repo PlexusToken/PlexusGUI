@@ -8,7 +8,8 @@
 
     const NOT_SYNC_FIELDS = [
         'changeSetting',
-        'has2fa'
+        'has2fa',
+        'extraFee'
     ];
 
     /**
@@ -20,6 +21,8 @@
      * @param {UserRouteState} UserRouteState
      * @param {ModalManager} modalManager
      * @param {TimeLine} timeLine
+     * @param {themes} themes
+     * @param {Service2FA} s2FAService
      * @return {User}
      */
     const factory = function (utils,
@@ -141,25 +144,6 @@
                 this._settings.change.on(() => this._onChangeSettings());
 
                 Mousetrap.bind(['ctrl+shift+k'], () => this.switchNextTheme());
-
-                this.onLogin()
-                    .then(() => {
-                        Promise.all([
-                            ds.fetch(`${ds.config.get('node')}/addresses/scriptInfo/${this.address}`),
-                            ds.signature.getSignatureApi().getPublicKey(),
-                            ds.api.assets.get(WavesApp.defaultAssets.WAVES)
-                        ])
-
-                            .then(([response, myPublicKey, waves]) => {
-                                this.extraFee = Money.fromCoins(response.extraFee, waves);
-                                return utils.getPublicKeysFromScript(response.scriptText || '')
-                                    .filter(key => key !== myPublicKey);
-                            })
-                            .then(s2FAService.check2FAKeys.bind(s2FAService))
-                            .then(has2fa => {
-                                this.has2fa = has2fa;
-                            });
-                    });
             }
 
             /**
@@ -472,8 +456,27 @@
                             })
                             .then(() => {
                                 this._logoutTimer();
-                                this._dfr.resolve();
-                            });
+                                return this._get2faData();
+                            })
+                            .then(this._dfr.resolve);
+                    });
+            }
+
+            _get2faData() {
+                return Promise.all([
+                    ds.fetch(`${ds.config.get('node')}/addresses/scriptInfo/${this.address}`),
+                    ds.signature.getSignatureApi().getPublicKey(),
+                    ds.api.assets.get(WavesApp.defaultAssets.WAVES)
+                ])
+
+                    .then(([response, myPublicKey, waves]) => {
+                        this.extraFee = Money.fromCoins(response.extraFee, waves);
+                        return utils.getPublicKeysFromScript(response.scriptText || '')
+                            .filter(key => key !== myPublicKey);
+                    })
+                    .then(keys => s2FAService.check2FAKeys(keys))
+                    .then(has2fa => {
+                        this.has2fa = has2fa;
                     });
             }
 
