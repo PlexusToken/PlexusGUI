@@ -12,9 +12,21 @@
      * @param {$rootScope.Scope} $scope
      * @param {app.utils} utils
      * @param {ValidateService} validateService
+     * @param {s2FAService} S2FAService
      * @returns {ConfirmTransaction}
      */
-    const controller = function (Base, waves, $attrs, $mdDialog, modalManager, user, $scope, utils, validateService) {
+    const controller = function (
+        Base,
+        waves,
+        $attrs,
+        $mdDialog,
+        modalManager,
+        user,
+        $scope,
+        utils,
+        validateService,
+        s2FAService
+    ) {
 
         const ds = require('data-service');
         const { TRANSACTION_TYPE_NUMBER } = require('@waves/signature-adapter');
@@ -138,12 +150,11 @@
                 this.trySign();
             }
 
-            onFillCode(/* code */) {
-                // TODO get signature from Dimas's serevice
-                // TODO get base64 from bytes
-                // libs.base64.fromByteArray();
-                // ds.fetch('https://localhost')
-                this._broadcast().then(this._getCodeDefer.resolve, this._getCodeDefer.reject);
+            onFillCode(code) {
+                s2FAService.checkPKey()
+                    .then(() => s2FAService.getSign(this._signable, code))
+                    .then(() => this._broadcast())
+                    .then(this._getCodeDefer.resolve, this._getCodeDefer.reject);
             }
 
             confirm() {
@@ -285,7 +296,8 @@
         'user',
         '$scope',
         'utils',
-        'validateService'
+        'validateService',
+        's2FAService'
     ];
 
     angular.module('app.ui').component('wConfirmTransaction', {

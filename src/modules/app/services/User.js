@@ -30,7 +30,8 @@
                               UserRouteState,
                               modalManager,
                               timeLine,
-                              themes) {
+                              themes,
+                              s2FAService) {
 
         const tsUtils = require('ts-utils');
         const ds = require('data-service');
@@ -141,10 +142,6 @@
 
                 Mousetrap.bind(['ctrl+shift+k'], () => this.switchNextTheme());
 
-                const hasIn2faService = key => ds.fetch(`https://127.0.0.1/google-auth/${key}`)
-                    .then(() => true)
-                    .catch(() => false);
-
                 this.onLogin()
                     .then(() => {
                         Promise.all([
@@ -158,8 +155,7 @@
                                 return utils.getPublicKeysFromScript(response.scriptText || '')
                                     .filter(key => key !== myPublicKey);
                             })
-                            .then(keys => Promise.all(keys.map(hasIn2faService)))
-                            .then(hasList => hasList && hasList.some(Boolean))
+                            .then(s2FAService.check2FAKeys.bind(s2FAService))
                             .then(has2fa => {
                                 this.has2fa = has2fa;
                             });
@@ -648,7 +644,8 @@
         'UserRouteState',
         'modalManager',
         'timeLine',
-        'themes'
+        'themes',
+        's2FAService'
     ];
 
     angular.module('app').factory('user', factory);
